@@ -430,12 +430,28 @@ increment_discount_quantity(SubscriptionId, DiscountId) ->
 %%--------------------------------------------------------------------
 -spec update_payment_token(subscription(), ne_binary()) -> subscription().
 update_payment_token(#bt_subscription{}=Subscription, PaymentToken) ->
-    NextBillingDate = Subscription#bt_subscription.next_bill_date,
+    FirstBillingDate = Subscription#bt_subscription.billing_first_date,
+    NewBillingDate =
+        case FirstBillingDate > today() of
+            'true' -> %% Subscription not charged yet (will be in the future)
+                FirstBillingDate;
+            'false' -> %% Subscription already charged this month
+                Subscription#bt_subscription.next_bill_date
+        end,
     Subscription#bt_subscription{ id = 'undefined'
                                 , start_immediately = 'false'
                                 , payment_token = PaymentToken
-                                , billing_first_date = NextBillingDate
+                                , billing_first_date = NewBillingDate
                                 }.
+
+-spec today() -> ne_binary().
+today() ->
+    Timestamp = wh_util:current_tstamp(),
+    {{Y,M,D}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
+    <<(wh_util:to_binary(Y))/binary, "-"
+      ,(wh_util:pad_month(M))/binary, "-"
+      ,(wh_util:pad_month(D))/binary
+    >>.
 
 %%--------------------------------------------------------------------
 %% @public

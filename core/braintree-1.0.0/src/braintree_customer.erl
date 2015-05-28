@@ -197,20 +197,20 @@ update(#bt_customer{id=CustomerId}=Customer) ->
     Request = record_to_xml(Customer, 'true'),
     Xml = braintree_request:put(Url, Request),
     %% Gives back the altered subscriptions
-    UpdateRecord = xml_to_record(Xml),
+    UpdatedRecord = xml_to_record(Xml),
 
-    NewCards = braintree_card:delete_unused_cards(get_cards(UpdateRecord)),
+    NewCards = braintree_card:delete_unused_cards(get_cards(UpdatedRecord)),
     NewPaymentToken = braintree_card:default_payment_token(NewCards),
     NewSubscriptions =
         [braintree_subscription:create(
            braintree_subscription:update_payment_token(Sub, NewPaymentToken))
-         || Sub <- get_subscriptions(UpdateRecord)
+         || Sub <- get_subscriptions(UpdatedRecord)
                 , not braintree_subscription:is_cancelled(Sub)
         ],
 
-    UpdateRecord#bt_customer{credit_cards = NewCards
-                             ,subscriptions = NewSubscriptions
-                            }.
+    UpdatedRecord#bt_customer{credit_cards = NewCards
+                              ,subscriptions = NewSubscriptions
+                             }.
 
 %%--------------------------------------------------------------------
 %% @public
