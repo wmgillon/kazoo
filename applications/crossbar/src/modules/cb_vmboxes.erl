@@ -609,6 +609,7 @@ cleanup_voicemail_box(AccountDb, Timestamp, {Box, Msgs}) ->
                           {'error', _}.
 delete_media(AccountDb, MediaId) ->
     {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, MediaId),
+    %here?
     couch_mgr:ensure_saved(AccountDb
                            ,wh_doc:set_soft_deleted(JObj, 'true')
                           ).

@@ -958,6 +958,7 @@ delete_media_binary(MediaId, Context, _AccountId) ->
             case wh_doc:attachment_names(cb_context:doc(Context1)) of
                 [] -> crossbar_util:response_bad_identifier(MediaId, Context);
                 [AttachmentId|_] ->
+                    %here?
                     crossbar_doc:delete_attachment(MediaId, AttachmentId, Context)
             end;
         _Status -> Context1

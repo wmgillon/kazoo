@@ -177,6 +177,7 @@ handle_call({'add_mapping', AccountId, JObj}, _From, State) ->
     {'reply', 'ok', State};
 handle_call({'rm_mapping', AccountId, PromptId}, _From, State) ->
     lager:debug("removing prompt mappings for ~s/~s", [AccountId, PromptId]),
+    %here?
     {'reply', ets:delete(table_id(), mapping_id(AccountId, PromptId)), State};
 handle_call({'new_map', Map}, _From, State) ->
     {'reply', ets:insert_new(table_id(), Map), State};
