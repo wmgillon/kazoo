@@ -12,6 +12,7 @@
 -module(ecallmgr_call_command).
 
 -export([exec_cmd/4]).
+-export([send_fs_uncache/2]).
 
 -ifdef(TEST).
 -export([get_conference_flags/1]).
@@ -1017,6 +1018,22 @@ send_fs_bg_store(Node, UUID, File, Args, 'put', 'store_vm') ->
         {'ok', JobId} -> lager:debug("bgapi started ~p", [JobId])
     end.
 
+-spec send_fs_uncache(ne_binary(), atom()) -> 'ok' | {'error',_}.
+send_fs_uncache(MediaUrl, Node) ->
+    lager:debug("flushing media on node ~s : '~s'", [Node, MediaUrl]),
+    Args = wh_util:to_list(MediaUrl),
+    case freeswitch:api(Node, 'http_cache_remove', Args, 120 * ?MILLISECONDS_IN_SECOND) of
+        {'ok', <<"+OK", _/binary>>} ->
+            lager:debug("successfully flushed media"),
+            'ok';
+        {'ok', Err} ->
+            lager:debug("flushing media failed: ~s", [Err]),
+            {'error', Err};
+        {'error', E} ->
+            lager:debug("error executing http_cache_remove on ~s: ~p", [Node, E]),
+            {'error', E}
+    end.
+
 -spec chk_store_result(atom(), atom(), ne_binary(), list(), ne_binary(), binary()) -> 'ok'.
 chk_store_result(Res, Node, UUID, [File], JobId, <<"+OK", _/binary>>=Reply) ->
     lager:debug("chk_store_result ~p : ~p : ~p", [Res, JobId, Reply]),
@@ -1024,7 +1041,7 @@ chk_store_result(Res, Node, UUID, [File], JobId, <<"+OK", _/binary>>=Reply) ->
 chk_store_result(Res, Node, UUID, [File], JobId, Reply) ->
     lager:debug("chk_store_result ~p : ~p : ~p", [Res, JobId, Reply]),
     send_store_call_event(Node, UUID, {<<"failure">>, File}).
-    
+
 -spec chk_store_vm_result(atom(), atom(), ne_binary(), list(), ne_binary(), binary()) -> 'ok'.
 chk_store_vm_result(Res, Node, UUID, _, JobId, <<"+OK", _/binary>>=Reply) ->
     lager:debug("chk_store_result ~p : ~p : ~p", [Res, JobId, Reply]),

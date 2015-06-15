@@ -1073,6 +1073,8 @@ media_url_cache_props(_MediaName) ->
 -spec cached_media_expelled(?ECALLMGR_PLAYBACK_MEDIA_KEY(ne_binary()), ne_binary(), atom()) -> 'ok'.
 cached_media_expelled(?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName), MediaUrl, _Reason) ->
     lager:debug("media ~s was expelled(~p), flushing from media servers", [MediaName, _Reason]),
+    _ = wh_cache:erase_local(?ECALLMGR_UTIL_CACHE
+                             ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)),
     Nodes = ecallmgr_fs_nodes:connected(),
     _ = [maybe_flush_node_of_media(MediaUrl, N) || N <- Nodes],
     'ok'.
@@ -1081,8 +1083,8 @@ cached_media_expelled(?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName), MediaUrl, _Reason
 maybe_flush_node_of_media(_MediaUrl, _Node) ->
     %% TODO: We need to both reduce the expelled
     %%  notifications (they currently include things
-    %%  like voicemail message saves) as well as
-    %%  massively increase the effeciency of the flush.
+    %%  like voicemail message saves)
+    _ = ecallmgr_call_command:send_fs_uncache(_MediaUrl, _Node),
     'ok'.
 
 -spec custom_sip_headers(wh_proplist()) -> wh_proplist().
