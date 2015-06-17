@@ -157,7 +157,7 @@ account_modb(Context, Year, Month) ->
     kazoo_modb:get_modb(account_id(Context), Year, Month).
 
 account_realm(Context) ->
-    wh_json:get_value(<<"pvt_realm">>, account_doc(Context)).
+    kz_account:realm(account_doc(Context)).
 
 account_doc(#cb_context{account_id='undefined'}) -> 'undefined';
 account_doc(Context) ->
