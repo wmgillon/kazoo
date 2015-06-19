@@ -389,7 +389,7 @@ maybe_archive_status_data(Srv, Match) ->
             ]
     end.
 
--spec archive_status_fold(status_stat(), dict()) -> dict().
+-spec archive_status_fold(status_stat(), dict:dict()) -> dict:dict().
 archive_status_fold(#status_stat{acct_id=AcctId}=Stat, Acc) ->
     Doc = status_stat_to_doc(Stat),
     dict:update(AcctId, fun(L) -> [Doc | L] end, [Doc], Acc).
