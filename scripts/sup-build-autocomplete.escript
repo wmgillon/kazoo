@@ -6,6 +6,8 @@
 
 -export([main/1]).
 
+-define(TERMS_FILE, "sup_mfas.erl").
+
 %% API
 
 main([]) ->
@@ -13,7 +15,17 @@ main([]) ->
     halt(255);
 main(Paths) ->
     Files = lists:flatmap(fun find_modules/1, Paths),
-    [print(find(File)) || File <- Files].
+    {'ok', IODevice} = file:open(?TERMS_FILE, ['write', 'append']),
+    'ok' = file:write(IODevice, "-module(sup_mfas).\n-export([as_list/0]).\nas_list()->[{erlang,get_cookie,[]}\n"),
+    lists:foreach(
+      fun (File) ->
+              Found = find(File),
+              print(Found),
+              IOList = [io_lib:fwrite(",~p\n", [{M,F,As}]) || {M,F,_A,As} <- Found],
+              'ok' = file:write(IODevice, IOList)
+      end, Files),
+    'ok' = file:write(IODevice, "].\n"),
+    'ok' = file:close(IODevice).
 
 %% Internals
 

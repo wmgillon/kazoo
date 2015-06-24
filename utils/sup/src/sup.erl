@@ -1,14 +1,16 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%% A really simple escript to accept RPC request and push them
 %%% into a running whistle virtual machine.
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
+%%%   Pierre Fenoll
 %%%------------------------------------------------------------------
 -module(sup).
 
+-mode(compile).
 -export([main/1]).
 
 -include_lib("whistle/include/wh_types.hrl").
@@ -46,25 +48,43 @@ main(CommandLineArgs, Loops) ->
             Function = list_to_atom(proplists:get_value(function, Options, "nofunction")),
             Timeout = case proplists:get_value(timeout, Options) of undefined -> infinity; T -> T * 1000 end,
             Verbose andalso io:format(standard_io, "Running ~s:~s(~s)~n", [Module, Function, string:join(Args, ", ")]),
-            case rpc:call(Target, Module, Function, [list_to_binary(Arg) || Arg <- Args], Timeout) of
-                {badrpc, {'EXIT',{undef, _}}} ->
-                    io:format(standard_error, "Invalid command or wrong number of arguments, please try again~n", []),
-                    halt(1);
-                {badrpc, Reason} ->
-                    String = io_lib:print(Reason, 1, ?MAX_CHARS, -1),
-                    io:format(standard_error, "Command failed: ~s~n", [String]),
-                    halt(1);
-                no_return ->
-                    erlang:halt(0);
-                Result when Verbose ->
-                    String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
-                    io:format(standard_io, "Result: ~s~n", [String]),
-                    erlang:halt(0);
-                Result ->
-                    String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
-                    io:format(standard_io, "~s~n", [String]),
-                    erlang:halt(0)
-            end
+
+            %% io:format("Target ~p \t Module ~p \t Function ~p \t Args ~p \n Timeout ~p\n", [Target,Module,Function,Args,Timeout]),
+            R = sup_complete:complete(sup_complete:new(sup_mfas:as_list()), mfas(Module,Function,Args)),
+            %% io:format("R ~p\n", [R]),
+
+            do_call(R, Target, Timeout, Verbose)
+    end.
+
+mfas(nomodule, _, _) -> [];
+mfas(M, nofunction, _) -> [M];
+mfas(M, F, As) -> [M, F, As].
+
+do_call({more,Suggestions}, _, _, _) ->
+    lists:map(fun (Suggestion) -> io:fwrite("\t~p\n", [Suggestion]) end, Suggestions),
+    halt(0);
+do_call({error,Reason}, _, _, _) ->
+    io:format(standard_error, "Error: ~p\n", [Reason]),
+    halt(1);
+do_call({ok,{Module,Function,Args}}, Target, Timeout, Verbose) ->
+    case rpc:call(Target, Module, Function, [list_to_binary(Arg) || Arg <- Args], Timeout) of
+        {badrpc, {'EXIT',{undef, _}}} ->
+            io:format(standard_error, "Invalid command or wrong number of arguments, please try again~n", []),
+            halt(1);
+        {badrpc, Reason} ->
+            String = io_lib:print(Reason, 1, ?MAX_CHARS, -1),
+            io:format(standard_error, "Command failed: ~s~n", [String]),
+            halt(1);
+        no_return ->
+            halt(0);
+        Result when Verbose ->
+            String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
+            io:format(standard_io, "Result: ~s~n", [String]),
+            halt(0);
+        Result ->
+            String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
+            io:format(standard_io, "~s~n", [String]),
+            halt(0)
     end.
 
 -spec get_target(proplist(), boolean()) -> atom().
